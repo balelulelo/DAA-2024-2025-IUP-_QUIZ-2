@@ -68,6 +68,20 @@ class Maze:
             if wall_dir == 'E' and cell.walls['E']: self._remove_walls(cell, self.grid[y][x+1]); removed_count += 1
             elif wall_dir == 'S' and cell.walls['S']: self._remove_walls(cell, self.grid[y+1][x]); removed_count += 1
 
+    def _get_wall_dir(self, direction):
+        if direction == UP: return 'N'
+        elif direction == DOWN: return 'S'
+        elif direction == LEFT: return 'W'
+        elif direction == RIGHT: return 'E'
+        return None
+
+    def can_move(self, x, y, direction):
+        if not (0 <= x < self.width and 0 <= y < self.height): return False
+        cell = self.grid[y][x]
+        wall_to_check = self._get_wall_dir(direction)
+        if wall_to_check is None: return False
+        return not cell.walls[wall_to_check]
+
     def draw(self, screen):
         screen.fill(BLACK)
         for y in range(self.height):
@@ -78,27 +92,37 @@ class Maze:
                 if cell.walls['S']: pygame.draw.line(screen, WHITE, (px, py + CELL_SIZE), (px + CELL_SIZE, py + CELL_SIZE))
                 if cell.walls['E']: pygame.draw.line(screen, WHITE, (px + CELL_SIZE, py), (px + CELL_SIZE, py + CELL_SIZE))
                 if cell.walls['W']: pygame.draw.line(screen, WHITE, (px, py), (px, py + CELL_SIZE))
-
 # Game Class
 class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Shadow Runner - Step 1: Maze")
+        pygame.display.set_caption("Shadow Runner - Step 2: Player")
         self.clock = pygame.time.Clock()
         self.maze = Maze(MAZE_WIDTH, MAZE_HEIGHT)
+        self.player = Player(0, 0)
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.player.move(0, -1, self.maze)
+                elif event.key == pygame.K_DOWN:
+                    self.player.move(0, 1, self.maze)
+                elif event.key == pygame.K_LEFT:
+                    self.player.move(-1, 0, self.maze)
+                elif event.key == pygame.K_RIGHT:
+                    self.player.move(1, 0, self.maze)
 
     def update(self):
-        pass 
+        pass
 
     def draw(self):
         self.maze.draw(self.screen)
+        self.player.draw(self.screen)
         pygame.display.flip()
 
     def run(self):
@@ -107,6 +131,22 @@ class Game:
             self.update()
             self.draw()
             self.clock.tick(30)
+# Player Class
+class Player:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+        self.radius = CELL_SIZE // 3
+
+    def move(self, dx, dy, maze):
+        direction = (dx, dy)
+        if maze.can_move(self.x, self.y, direction):
+            self.x += dx
+            self.y += dy
+
+    def draw(self, screen):
+        px = self.x * CELL_SIZE + CELL_SIZE // 2
+        py = self.y * CELL_SIZE + CELL_SIZE // 2
+        pygame.draw.circle(screen, GREEN, (px, py), self.radius)
 
 if __name__ == "__main__":
     game = Game()
