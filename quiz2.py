@@ -2,40 +2,41 @@ import pygame
 import random
 import sys
 
-# Constants 
+# Constants
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 CELL_SIZE = 30
 MAZE_WIDTH = SCREEN_WIDTH // CELL_SIZE
 MAZE_HEIGHT = SCREEN_HEIGHT // CELL_SIZE
-EXTRA_WALL_REMOVAL_PERCENT = 0.15 
+EXTRA_WALL_REMOVAL_PERCENT = 0.15
+
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+GOLD = (255, 215, 0) 
 
-# Movement 
+# Movement
 UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
+DIRECTIONS = [UP, DOWN, LEFT, RIGHT]
 
 # Cell Class
 class Cell:
     def __init__(self, x, y):
-        self.x, self.y = x, y
-        self.walls = {'N': True, 'S': True, 'E': True, 'W': True}
-        self.visited = False
+        self.x, self.y = x, y; self.walls = {'N': True, 'S': True, 'E': True, 'W': True}; self.visited = False
 
-# Maze Class 
+# Maze Class
 class Maze:
     def __init__(self, width, height):
-        self.width = width
-        self.height = height
+        self.width = width; self.height = height
         self.grid = [[Cell(x, y) for x in range(width)] for y in range(height)]
-        self._generate_maze()
-        self._remove_extra_walls()
+        self._generate_maze(); self._remove_extra_walls()
+        self.exit_pos = (width - 1, height - 1) 
 
-    def _get_neighbors(self, cell):
+    def _get_neighbors(self, cell): 
         neighbors = []; x, y = cell.x, cell.y
         if x > 0 and not self.grid[y][x - 1].visited: neighbors.append(self.grid[y][x - 1])
         if x < self.width - 1 and not self.grid[y][x + 1].visited: neighbors.append(self.grid[y][x + 1])
@@ -43,7 +44,7 @@ class Maze:
         if y < self.height - 1 and not self.grid[y + 1][x].visited: neighbors.append(self.grid[y + 1][x])
         return neighbors
 
-    def _remove_walls(self, current, next_cell):
+    def _remove_walls(self, current, next_cell): 
         dx = current.x - next_cell.x; dy = current.y - next_cell.y
         if dx == 1: current.walls['W'], next_cell.walls['E'] = False, False
         elif dx == -1: current.walls['E'], next_cell.walls['W'] = False, False
@@ -59,7 +60,7 @@ class Maze:
         for row in self.grid:
             for cell in row: cell.visited = False
 
-    def _remove_extra_walls(self):
+    def _remove_extra_walls(self): 
         num_walls_to_remove = int(self.width * self.height * EXTRA_WALL_REMOVAL_PERCENT)
         removed_count = 0
         while removed_count < num_walls_to_remove:
@@ -68,7 +69,7 @@ class Maze:
             if wall_dir == 'E' and cell.walls['E']: self._remove_walls(cell, self.grid[y][x+1]); removed_count += 1
             elif wall_dir == 'S' and cell.walls['S']: self._remove_walls(cell, self.grid[y+1][x]); removed_count += 1
 
-    def _get_wall_dir(self, direction):
+    def _get_wall_dir(self, direction): 
         if direction == UP: return 'N'
         elif direction == DOWN: return 'S'
         elif direction == LEFT: return 'W'
@@ -77,52 +78,81 @@ class Maze:
 
     def can_move(self, x, y, direction):
         if not (0 <= x < self.width and 0 <= y < self.height): return False
-        cell = self.grid[y][x]
-        wall_to_check = self._get_wall_dir(direction)
+        cell = self.grid[y][x]; wall_to_check = self._get_wall_dir(direction)
         if wall_to_check is None: return False
         return not cell.walls[wall_to_check]
 
-    def draw(self, screen):
+    def draw(self, screen): 
         screen.fill(BLACK)
         for y in range(self.height):
             for x in range(self.width):
-                px, py = x * CELL_SIZE, y * CELL_SIZE
-                cell = self.grid[y][x]
+                px, py = x * CELL_SIZE, y * CELL_SIZE; cell = self.grid[y][x]
                 if cell.walls['N']: pygame.draw.line(screen, WHITE, (px, py), (px + CELL_SIZE, py))
                 if cell.walls['S']: pygame.draw.line(screen, WHITE, (px, py + CELL_SIZE), (px + CELL_SIZE, py + CELL_SIZE))
                 if cell.walls['E']: pygame.draw.line(screen, WHITE, (px + CELL_SIZE, py), (px + CELL_SIZE, py + CELL_SIZE))
                 if cell.walls['W']: pygame.draw.line(screen, WHITE, (px, py), (px, py + CELL_SIZE))
+        ex, ey = self.exit_pos
+        pygame.draw.rect(screen, GOLD, (ex * CELL_SIZE + 2, ey * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4))
+
+
+# Player Class
+class Player:
+    def __init__(self, x, y):
+        self.x, self.y = x, y; self.radius = CELL_SIZE // 3
+    def move(self, dx, dy, maze):
+        direction = (dx, dy)
+        if maze.can_move(self.x, self.y, direction): self.x += dx; self.y += dy
+    def draw(self, screen):
+        px = self.x * CELL_SIZE + CELL_SIZE // 2; py = self.y * CELL_SIZE + CELL_SIZE // 2
+        pygame.draw.circle(screen, GREEN, (px, py), self.radius)
+
 # Game Class
 class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Shadow Runner - Step 2: Player")
+        pygame.display.set_caption("Shadow Runner - Step 3: Win Condition")
         self.clock = pygame.time.Clock()
+        self.font = pygame.font.Font(None, 50) 
+        self.reset_game() 
+
+    def reset_game(self):
         self.maze = Maze(MAZE_WIDTH, MAZE_HEIGHT)
         self.player = Player(0, 0)
+        self.game_state = "playing" 
 
     def handle_events(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self.player.move(0, -1, self.maze)
-                elif event.key == pygame.K_DOWN:
-                    self.player.move(0, 1, self.maze)
-                elif event.key == pygame.K_LEFT:
-                    self.player.move(-1, 0, self.maze)
-                elif event.key == pygame.K_RIGHT:
-                    self.player.move(1, 0, self.maze)
+            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
+            if self.game_state == "playing": 
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP: self.player.move(0, -1, self.maze)
+                    elif event.key == pygame.K_DOWN: self.player.move(0, 1, self.maze)
+                    elif event.key == pygame.K_LEFT: self.player.move(-1, 0, self.maze)
+                    elif event.key == pygame.K_RIGHT: self.player.move(1, 0, self.maze)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                self.reset_game()
 
     def update(self):
-        pass
+        if self.game_state == "playing":
+            if (self.player.x, self.player.y) == self.maze.exit_pos:
+                self.game_state = "win"
+
+    def draw_message(self, message, color): 
+        text = self.font.render(message, True, color)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+        self.screen.blit(text, text_rect)
+        text2 = self.font.render("Press 'R' to Restart", True, WHITE)
+        text_rect2 = text2.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
+        self.screen.blit(text2, text_rect2)
 
     def draw(self):
         self.maze.draw(self.screen)
         self.player.draw(self.screen)
+
+        if self.game_state == "win": 
+            self.draw_message("You Escaped!", GREEN)
+
         pygame.display.flip()
 
     def run(self):
@@ -131,23 +161,8 @@ class Game:
             self.update()
             self.draw()
             self.clock.tick(30)
-# Player Class
-class Player:
-    def __init__(self, x, y):
-        self.x, self.y = x, y
-        self.radius = CELL_SIZE // 3
 
-    def move(self, dx, dy, maze):
-        direction = (dx, dy)
-        if maze.can_move(self.x, self.y, direction):
-            self.x += dx
-            self.y += dy
-
-    def draw(self, screen):
-        px = self.x * CELL_SIZE + CELL_SIZE // 2
-        py = self.y * CELL_SIZE + CELL_SIZE // 2
-        pygame.draw.circle(screen, GREEN, (px, py), self.radius)
-
+# Main Execution
 if __name__ == "__main__":
     game = Game()
     game.run()
