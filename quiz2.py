@@ -290,18 +290,6 @@ class Game:
         if self.game_state == "warning": 
             self.draw_warning_screen()
 
-        elif self.game_state == "lose" and self.jumpscare_image:
-            self.screen.fill(BLACK)
-            img_rect = self.jumpscare_image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            self.screen.blit(self.jumpscare_image, img_rect)
-            self.draw_message("", RED, on_image=True)
-
-        elif self.game_state == "win" and self.win_image:
-            self.screen.fill(BLACK)
-            img_rect = self.win_image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-            self.screen.blit(self.win_image, img_rect)
-            self.draw_message("", GREEN, on_image=True)
-
         elif self.game_state == "playing": 
             self.maze.draw(self.screen)
             self.player.draw(self.screen)
